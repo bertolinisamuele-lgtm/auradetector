@@ -30,6 +30,31 @@ function getUsage() {
 function saveUsage(u) { write(K.usage, u); }
 /* Premium is server truth (Stripe webhook → database). The client never decides. */
 function isPremium() { return Boolean(state.me && state.me.premium); }
+const AUTH_ERROR_MESSAGES = {
+  google_not_configured: "Google sign-in isn't configured on the server. Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET.",
+  google_access_denied: "Google denied access. If the OAuth consent screen is in Testing, add your Google account as a test user.",
+  google_redirect_uri_mismatch: "Google redirect URI mismatch: add the exact redirect URI shown on this page to Google Cloud Console.",
+  google_invalid_client: "Google rejected the client ID/secret. Check GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET.",
+  google_invalid_grant: "The Google sign-in expired or was already used. Please try again.",
+  google_verify_failed: "Google sign-in could not be verified. Please try again.",
+  google_token_failed: "Google token exchange failed. Please try again.",
+  google_error: "Google sign-in failed. Please try again.",
+  apple_not_configured: "Apple sign-in isn't configured on the server.",
+  apple_token_failed: "Apple sign-in failed. Please try again.",
+  invalid_state: "The sign-in session expired. Please try again.",
+  no_code: "No authorization code was returned. Please try again.",
+};
+function authErrorText(code) {
+  if (!code) return "Sign-in failed. Please try again.";
+  for (const k of Object.keys(AUTH_ERROR_MESSAGES)) if (code.startsWith(k)) return AUTH_ERROR_MESSAGES[k];
+  return "Sign-in failed (" + code + "). Please try again.";
+}
+async function refreshProviders() {
+  try {
+    const r = await fetch(E.getApiBase() + "/api/auth/providers", { credentials: "include" });
+    if (r.ok) state.providers = await r.json();
+  } catch {}
+}
 async function refreshMe() {
   try {
     const r = await fetch(E.getApiBase() + "/api/me", { credentials: "include" });
@@ -68,7 +93,7 @@ function addHistory(result, mode) {
 }
 
 /* --------------------------------- State ---------------------------------- */
-const state = { result: null, plan: read(K.plan, "yearly"), lastFile: null, battleA: null, battleB: null, currentScreen: "home", me: { user: null, premium: false, plan: null, subscription: null }, serverScans: null, scanning: false, lastScan: null };
+const state = { result: null, plan: read(K.plan, "yearly"), lastFile: null, battleA: null, battleB: null, currentScreen: "home", me: { user: null, premium: false, plan: null, subscription: null }, providers: null, serverScans: null, scanning: false, lastScan: null };
 
 /* ------------------------------- Router ----------------------------------- */
 function navigate(name) {
@@ -469,9 +494,13 @@ function saveSettings() {
 }
 
 /* --------------------------------- Account -------------------------------- */
-function renderAccount() {
+async function renderAccount() {
   const body = $("#accountBody");
   if (!body) return;
+  if (!state.providers) await refreshProviders();
+  const prov = state.providers || {};
+  const gReady = !!(prov.google && prov.google.configured);
+  const aReady = !!(prov.apple && prov.apple.configured);
   const u = state.me && state.me.user;
   if (!u) {
     body.innerHTML = `<div class="block">
@@ -486,9 +515,16 @@ function renderAccount() {
           <button class="btn btn-outline btn-block" id="btnAccRegister">CREATE ACCOUNT</button>
         </div>
         <div class="oauth-row">
-          <a class="btn btn-ghost btn-block" href="${E.getApiBase()}/api/auth/google">Continue with Google</a>
-          <a class="btn btn-ghost btn-block" href="${E.getApiBase()}/api/auth/apple">Continue with Apple</a>
+          ${gReady ? `<a class="btn btn-ghost btn-block" href="${E.getApiBase()}/api/auth/google">Continue with Google</a>`
+                   : `<button class="btn btn-ghost btn-block" disabled>Continue with Google (not configured)</button>`}
+          ${aReady ? `<a class="btn btn-ghost btn-block" href="${E.getApiBase()}/api/auth/apple">Continue with Apple</a>`
+                   : `<button class="btn btn-ghost btn-block" disabled>Continue with Apple (not configured)</button>`}
         </div>
+        ${!gReady && prov.google && prov.google.redirectUri ? `<div class="glass" style="padding:12px 14px;margin-top:12px;border-radius:12px">
+          <p class="tiny muted" style="margin:0 0 6px">To enable Google sign-in, in Google Cloud Console → Credentials → OAuth client (Web):</p>
+          <p class="tiny" style="margin:0 0 4px">Authorized JavaScript origin:<br><b style="word-break:break-all">${prov.origin || location.origin}</b></p>
+          <p class="tiny" style="margin:0">Authorized redirect URI:<br><b style="word-break:break-all">${prov.google.redirectUri}</b></p>
+        </div>` : ""}
         <p class="tiny muted">Social sign-in works when the corresponding provider credentials are configured on the server.</p>
       </div>
     </div>`;
@@ -912,7 +948,7 @@ function init() {
   refreshMe().then(() => {
     const q = new URLSearchParams(location.search);
     if (q.get("auth") === "ok") { toast("Signed in."); navigate("account"); }
-    else if (q.get("auth_error")) toast("Sign-in failed. Please try again.", 3400);
+    else if (q.get("auth_error")) { toast(authErrorText(q.get("auth_error")), 5200); navigate("account"); }
     else if (q.get("checkout") === "success") { toast("Aura Pro activated. Welcome ✦", 3600); navigate("account"); }
     else if (q.get("checkout") === "cancel") toast("Checkout cancelled.");
     if (q.get("auth") || q.get("auth_error") || q.get("checkout") || q.get("portal")) history.replaceState(null, "", location.pathname);

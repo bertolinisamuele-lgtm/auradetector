@@ -116,9 +116,26 @@ Then in the browser:
 
 ## 4. Enabling Google / Apple sign-in and Stripe (optional)
 
-- **Google**: Google Cloud Console → *APIs & Services → Credentials → Create credentials → OAuth client ID → Web application*.
-  Authorised redirect URI: `https://YOUR-APP.onrender.com/api/auth/google/callback`.
-  Set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` in Render → **Environment** → Save (service redeploys).
+- **Google** (exact values for `https://auradetector.onrender.com`):
+  1. Google Cloud Console → *APIs & Services → Credentials → Create credentials → OAuth client ID → Web application*.
+  2. **Authorized JavaScript origins**: `https://auradetector.onrender.com` (no trailing slash, no path)
+  3. **Authorized redirect URIs**: `https://auradetector.onrender.com/api/auth/google/callback` (exact, provider-first path)
+  4. If the OAuth consent screen is in **Testing**, add your Google account under *Test users*, otherwise Google returns `access_denied`.
+  5. Copy **Client ID** and **Client secret** → Render → *Environment* → `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` → Save (redeploys).
+
+  You can always read the exact values the running server expects at
+  `https://auradetector.onrender.com/api/auth/providers`.
+
+### Auth troubleshooting
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| Login returns but you stay signed out | `SESSION_SECRET` missing → cookies signed with a per-boot random secret, invalidated by a restart/cold start | set `SESSION_SECRET` (long random). The server also persists a stable fallback next to the DB. |
+| `auth_error=google_not_configured` | `GOOGLE_CLIENT_ID`/`SECRET` not set in Render | add both env vars |
+| `auth_error=google_redirect_uri_mismatch` | redirect URI in Google Console differs from `/api/auth/google/callback` | copy the exact URI from `/api/auth/providers` |
+| `auth_error=google_access_denied` | consent screen in Testing and your account is not a test user | add your account as a test user (or publish the app) |
+| `auth_error=invalid_state` | OAuth state cookie lost/expired | retry; make sure `SESSION_SECRET` is set |
+| Apple login: `no_code` | (fixed) urlencoded body was not parsed | already handled by `express.urlencoded` |
 - **Apple**: Apple Developer → Services ID + `.p8` key. Return URL: `https://YOUR-APP.onrender.com/api/auth/apple/callback`.
   Set `APPLE_CLIENT_ID`, `APPLE_TEAM_ID`, `APPLE_KEY_ID`, `APPLE_PRIVATE_KEY`.
 - **Stripe**: create monthly + annual Prices, add a webhook endpoint

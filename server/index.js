@@ -18,7 +18,7 @@ import cookieParser from "cookie-parser";
 import multer from "multer";
 import crypto from "node:crypto";
 import path from "node:path";
-import { readFileSync, existsSync } from "node:fs";
+import { readFileSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { analyze, aiStatus, AiError, geminiModelInfo } from "./ai.js";
 import { authRouter, attachUser, requireUser } from "./auth.js";
@@ -44,6 +44,29 @@ function loadDotEnv() {
   } catch {}
 }
 loadDotEnv();
+
+/* ------------------------------ Cookie secret ----------------------------- */
+/* Cookies (session + OAuth state) are signed. If SESSION_SECRET is missing we
+ * MUST NOT use a per-boot random value: after a restart (Render cold start)
+ * every cookie would fail verification and sign-in would silently break.
+ * Instead we persist a stable secret next to the database. */
+function resolveCookieSecret() {
+  const env = process.env.SESSION_SECRET;
+  if (env && env.length >= 16) return env;
+  try {
+    const dataDir = process.env.DATA_DIR || path.join(APP_DIR, "data");
+    mkdirSync(dataDir, { recursive: true });
+    const f = path.join(dataDir, ".session-secret");
+    if (existsSync(f)) return readFileSync(f, "utf8").trim();
+    const s = crypto.randomBytes(32).toString("hex");
+    writeFileSync(f, s, { mode: 0o600 });
+    console.warn(JSON.stringify({ level: "warn", msg: "SESSION_SECRET not set — generated a persistent local secret. Set SESSION_SECRET in the environment for production." }));
+    return s;
+  } catch {
+    console.warn(JSON.stringify({ level: "warn", msg: "SESSION_SECRET not set and the data dir is not writable — using an ephemeral secret. Set SESSION_SECRET." }));
+    return crypto.randomBytes(32).toString("hex");
+  }
+}
 const PORT = Number(process.env.PORT || 8787);
 const IS_PROD = process.env.NODE_ENV === "production";
 const COOKIE_SECURE = process.env.COOKIE_SECURE ? process.env.COOKIE_SECURE === "true" : IS_PROD;
@@ -245,7 +268,11 @@ app.use(helmet({
 app.post("/api/stripe/webhook", express.raw({ type: "application/json", limit: "256kb" }), handleStripeWebhook);
 
 app.use(express.json({ limit: "64kb" }));
-app.use(cookieParser(process.env.SESSION_SECRET || ADMIN_SESSION_SECRET || crypto.randomBytes(32).toString("hex")));
+// Apple Sign in returns the authorization code as application/x-www-form-urlencoded
+// (response_mode=form_post). Without this parser req.body is empty and Apple
+// login always failed with "no_code".
+app.use(express.urlencoded({ extended: false, limit: "16kb" }));
+app.use(cookieParser(resolveCookieSecret()));
 app.use(attachUser);
 
 app.use((req, res, next) => {
@@ -283,6 +310,18 @@ app.get("/api/me", (req, res) => {
     plan: p.plan,
     subscription: p,
     scans: req.user ? scansForUser(req.user.id, 30) : [],
+  });
+});
+
+/* Public, non-sensitive OAuth configuration + the exact redirect URIs to paste
+ * into Google Cloud Console / Apple Developer. */
+app.get("/api/auth/providers", (req, res) => {
+  const o = publicOrigin();
+  res.json({
+    ok: true,
+    origin: o,
+    google: { configured: Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET), authorizedJavaScriptOrigin: o, redirectUri: `${o}/api/auth/google/callback` },
+    apple: { configured: Boolean(process.env.APPLE_CLIENT_ID && process.env.APPLE_TEAM_ID && process.env.APPLE_KEY_ID && process.env.APPLE_PRIVATE_KEY), redirectUri: `${o}/api/auth/apple/callback` },
   });
 });
 

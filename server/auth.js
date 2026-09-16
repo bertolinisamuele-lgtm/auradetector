@@ -79,7 +79,10 @@ authRouter.get("/me", (req, res) => {
     ok: true,
     user: publicUser(req.user),
     providers: req.user ? linkedProviders(req.user.id) : [],
-    oauth: { google: googleConfigured(), apple: appleConfigured() },
+    oauth: {
+      google: { configured: googleConfigured(), redirectUri: redirectUri("google") },
+      apple: { configured: appleConfigured(), redirectUri: redirectUri("apple") },
+    },
   });
 });
 
@@ -133,13 +136,33 @@ authRouter.delete("/account", requireUser, (req, res) => {
   res.json({ ok: true });
 });
 
-/* --------------------------------- Google --------------------------------- */
-const googleConfigured = () => Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
+/* ------------------------------ Shared OAuth ------------------------------ */
+const googleCfg = () => ({
+  // The URLs are overridable only to allow offline testing; production uses Google.
+  authUrl: process.env.GOOGLE_AUTH_URL || "https://accounts.google.com/o/oauth2/v2/auth",
+  tokenUrl: process.env.GOOGLE_TOKEN_URL || "https://oauth2.googleapis.com/token",
+  jwksUrl: process.env.GOOGLE_JWKS_URL || "https://www.googleapis.com/oauth2/v3/certs",
+  clientId: String(process.env.GOOGLE_CLIENT_ID || "").trim(),
+  clientSecret: String(process.env.GOOGLE_CLIENT_SECRET || "").trim(),
+});
+const googleConfigured = () => Boolean(googleCfg().clientId && googleCfg().clientSecret);
 const appleConfigured = () => Boolean(process.env.APPLE_CLIENT_ID && process.env.APPLE_TEAM_ID && process.env.APPLE_KEY_ID && process.env.APPLE_PRIVATE_KEY);
 
+async function fetchTimeout(url, opts = {}, ms = 9000) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), ms);
+  try { return await fetch(url, { ...opts, signal: ctrl.signal }); } finally { clearTimeout(t); }
+}
+
+/* CSRF state cookie. SameSite=None is REQUIRED for cross-site form_post callbacks
+ * (Apple posts the code back), otherwise the cookie is not sent and login fails
+ * with invalid_state. SameSite=None requires Secure, so we fall back to Lax on http. */
+function stateCookieOpts() {
+  return { httpOnly: true, secure: COOKIE_SECURE, sameSite: COOKIE_SECURE ? "none" : "lax", signed: true, maxAge: 1000 * 60 * 10, path: "/" };
+}
 function randomState(res) {
   const state = crypto.randomBytes(16).toString("base64url");
-  res.cookie(STATE_COOKIE, state, { httpOnly: true, secure: COOKIE_SECURE, sameSite: "lax", signed: true, maxAge: 1000 * 60 * 10, path: "/" });
+  res.cookie(STATE_COOKIE, state, stateCookieOpts());
   return state;
 }
 function checkState(req, res) {
@@ -151,11 +174,13 @@ function checkState(req, res) {
 const fail = (res, code) => res.redirect(`${origin()}/?auth_error=${encodeURIComponent(code)}`);
 const done = (res) => res.redirect(`${origin()}/?auth=ok`);
 
+/* --------------------------------- Google --------------------------------- */
 authRouter.get("/google", (req, res) => {
+  const g = googleCfg();
   if (!googleConfigured()) return fail(res, "google_not_configured");
   const state = randomState(res);
-  const url = new URL("https://accounts.google.com/o/oauth2/v2/auth");
-  url.searchParams.set("client_id", process.env.GOOGLE_CLIENT_ID);
+  const url = new URL(g.authUrl);
+  url.searchParams.set("client_id", g.clientId);
   url.searchParams.set("redirect_uri", redirectUri("google"));
   url.searchParams.set("response_type", "code");
   url.searchParams.set("scope", "openid email profile");
@@ -164,31 +189,75 @@ authRouter.get("/google", (req, res) => {
   res.redirect(url.toString());
 });
 
+/* Verify the Google id_token locally: signature via Google's JWKS + claims.
+ * This replaces the legacy tokeninfo endpoint (which is rate-limited and can
+ * fail intermittently), which was a real source of intermittent login failures. */
+let googleJwks = null, googleJwksAt = 0;
+async function googleKeys() {
+  if (googleJwks && Date.now() - googleJwksAt < 3600_000) return googleJwks;
+  const r = await fetchTimeout(googleCfg().jwksUrl, {}, 8000);
+  if (!r.ok) throw new Error("jwks_" + r.status);
+  googleJwks = (await r.json()).keys || [];
+  googleJwksAt = Date.now();
+  return googleJwks;
+}
+async function verifyGoogleIdToken(idToken) {
+  const [h, p, s] = String(idToken).split(".");
+  if (!h || !p || !s) throw new Error("bad_jwt");
+  const header = JSON.parse(Buffer.from(h, "base64url").toString("utf8"));
+  const payload = JSON.parse(Buffer.from(p, "base64url").toString("utf8"));
+  let jwk = (await googleKeys()).find((k) => k.kid === header.kid);
+  if (!jwk) { googleJwks = null; jwk = (await googleKeys()).find((k) => k.kid === header.kid); }
+  if (!jwk) throw new Error("no_key");
+  const key = crypto.createPublicKey({ key: jwk, format: "jwk" });
+  if (!crypto.verify("RSA-SHA256", Buffer.from(h + "." + p), key, Buffer.from(s, "base64url"))) throw new Error("bad_signature");
+  const iss = String(payload.iss || "");
+  if (!["accounts.google.com", "https://accounts.google.com"].includes(iss)) throw new Error("bad_iss");
+  if (payload.aud !== googleCfg().clientId) throw new Error("bad_aud");
+  if (!payload.exp || payload.exp * 1000 < Date.now()) throw new Error("expired");
+  if (!payload.sub) throw new Error("no_sub");
+  return payload;
+}
+
 authRouter.get("/google/callback", async (req, res) => {
   try {
     if (!googleConfigured()) return fail(res, "google_not_configured");
+    // Google sends ?error=access_denied when the account is not an allowed test user, etc.
+    if (req.query.error) {
+      console.error(JSON.stringify({ level: "warn", route: "/api/auth/google/callback", step: "authorize", error: String(req.query.error).slice(0, 60) }));
+      return fail(res, "google_" + String(req.query.error));
+    }
     if (!checkState(req, res)) return fail(res, "invalid_state");
     const code = String(req.query.code || "");
     if (!code) return fail(res, "no_code");
-    const tr = await fetch("https://oauth2.googleapis.com/token", {
+    const g = googleCfg();
+    const tr = await fetchTimeout(g.tokenUrl, {
       method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({
-        code, client_id: process.env.GOOGLE_CLIENT_ID, client_secret: process.env.GOOGLE_CLIENT_SECRET,
+        code, client_id: g.clientId, client_secret: g.clientSecret,
         redirect_uri: redirectUri("google"), grant_type: "authorization_code",
       }),
-    });
-    const tok = await tr.json();
-    if (!tr.ok || !tok.id_token) return fail(res, "google_token_failed");
-    // Verify the id_token against Google.
-    const vr = await fetch("https://oauth2.googleapis.com/tokeninfo?id_token=" + encodeURIComponent(tok.id_token));
-    const info = await vr.json();
-    if (!vr.ok || !info.sub || info.aud !== process.env.GOOGLE_CLIENT_ID) return fail(res, "google_verify_failed");
+    }, 10000);
+    const tok = await tr.json().catch(() => ({}));
+    if (!tr.ok || !tok.id_token) {
+      console.error(JSON.stringify({ level: "warn", route: "/api/auth/google/callback", step: "token", status: tr.status, error: tok.error || null }));
+      return fail(res, "google_" + (tok.error || "token_failed"));
+    }
+    let info;
+    try { info = await verifyGoogleIdToken(tok.id_token); }
+    catch (e) {
+      console.error(JSON.stringify({ level: "warn", route: "/api/auth/google/callback", step: "verify", reason: e.message }));
+      return fail(res, "google_verify_failed");
+    }
     const userId = upsertOAuthUser("google", info.sub, info.email, info.name);
     const { token } = createSession(userId, { userAgent: req.headers["user-agent"], ip: req.ip });
     setSessionCookie(res, token);
     track({ userId, event: "auth_login", props: { method: "google" } });
     done(res);
-  } catch { fail(res, "google_error"); }
+  } catch (e) {
+    console.error(JSON.stringify({ level: "error", route: "/api/auth/google/callback", reason: String(e && e.message).slice(0, 120) }));
+    fail(res, "google_error");
+  }
 });
 
 /* ---------------------------------- Apple --------------------------------- */
@@ -246,15 +315,18 @@ async function appleCallback(req, res) {
     if (!checkState(req, res)) return fail(res, "invalid_state");
     const code = String(req.body?.code || req.query.code || "");
     if (!code) return fail(res, "no_code");
-    const tr = await fetch("https://appleid.apple.com/auth/token", {
+    const tr = await fetchTimeout("https://appleid.apple.com/auth/token", {
       method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({
         code, client_id: process.env.APPLE_CLIENT_ID, client_secret: appleClientSecret(),
         redirect_uri: redirectUri("apple"), grant_type: "authorization_code",
       }),
-    });
-    const tok = await tr.json();
-    if (!tr.ok || !tok.id_token) return fail(res, "apple_token_failed");
+    }, 10000);
+    const tok = await tr.json().catch(() => ({}));
+    if (!tr.ok || !tok.id_token) {
+      console.error(JSON.stringify({ level: "warn", route: "/api/auth/apple/callback", step: "token", status: tr.status, error: tok.error || null }));
+      return fail(res, "apple_token_failed");
+    }
     const info = await verifyAppleIdToken(tok.id_token);
     let name = null;
     if (req.body?.user) { try { const u = JSON.parse(req.body.user); name = [u?.name?.firstName, u?.name?.lastName].filter(Boolean).join(" ") || null; } catch {} }
