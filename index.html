@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=5" />
+<meta name="theme-color" content="#05050a" />
+<title>AuraDetector — AI Aura Scanner | How Much Aura Do You Have?</title>
+<meta name="description" content="Upload a photo or describe a scenario and let AI calculate your Aura Score. AuraDetector is an AI-generated entertainment score — just for fun." />
+<link rel="canonical" href="https://auradetector.app/" />
+<meta name="robots" content="index,follow" />
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="AuraDetector" />
+<meta property="og:title" content="AuraDetector — AI Aura Scanner" />
+<meta property="og:description" content="Upload a photo or describe a scenario and let AI calculate your Aura Score." />
+<meta property="og:url" content="https://auradetector.app/" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="AuraDetector — AI Aura Scanner" />
+<meta name="twitter:description" content="How much aura do you have? Scan it with AuraDetector." />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="AuraDetector" />
+<link rel="manifest" href="manifest.webmanifest" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"WebApplication","name":"AuraDetector","applicationCategory":"EntertainmentApplication","operatingSystem":"Web","description":"Upload a photo or describe a scenario and let AI calculate your Aura Score.","offers":{"@type":"Offer","price":"0","priceCurrency":"EUR"}}
+</script>
+</head>
+<body>
+<div class="bg-orbs" aria-hidden="true"><span class="orb orb-a"></span><span class="orb orb-b"></span><span class="orb orb-c"></span></div>
+
+<header class="topbar" id="topbar">
+  <button class="brand" data-nav="home" aria-label="AuraDetector home">
+    <span class="brand-mark">✦</span><span class="brand-name">AuraDetector</span>
+  </button>
+  <nav class="topnav">
+    <button class="icon-btn" data-nav="history" title="History">◷</button>
+    <button class="icon-btn" data-nav="account" title="Account">◉</button>
+    <button class="icon-btn" id="btnSettings" title="Connection">⚙</button>
+    <button class="icon-btn" data-nav="admin" title="Admin">▤</button>
+  </nav>
+</header>
+
+<div class="conn-banner" id="connBanner" hidden>
+  <span class="conn-ico">⚠︎</span>
+  <span id="connBannerText"></span>
+  <button class="btn btn-ghost btn-sm" id="connRetry">RETRY</button>
+  <button class="btn btn-ghost btn-sm" id="connSettings">SETTINGS</button>
+</div>
+
+<main id="app">
+
+<!-- ===================== HOME / LANDING ===================== -->
+<section class="screen active" id="screen-home">
+  <div class="hero">
+    <div class="pill" id="aiStatusPill"><span class="dot"></span><span id="aiStatusText">Local engine ready</span></div>
+    <h1 class="hero-title">HOW MUCH<br /><span class="grad">AURA</span> DO<br />YOU HAVE?</h1>
+    <p class="hero-sub">Upload a photo or describe a situation. Let AI calculate your Aura.</p>
+    <div class="cta-row">
+      <button class="btn btn-primary btn-lg" data-nav="photo">SCAN MY AURA</button>
+      <button class="btn btn-ghost btn-lg" data-nav="scenario">DESCRIBE A SCENARIO</button>
+    </div>
+
+    <div class="sample reveal">
+      <div class="sample-score">
+        <div class="sample-num" id="sampleNum">842</div>
+        <div class="sample-label">AURA</div>
+      </div>
+      <div class="sample-meta">
+        <div class="tier-chip">LEGENDARY</div>
+        <div class="sample-delta">+127 compared to average</div>
+      </div>
+    </div>
+    <p class="disclaimer">Just for fun. Your Aura Score is an AI-generated entertainment score.</p>
+  </div>
+
+  <section class="block">
+    <h2 class="sec-title">How it works</h2>
+    <div class="grid-3">
+      <article class="glass card"><div class="card-ico">📸</div><h3>1. Upload or describe</h3><p>Pick a photo (JPG, PNG, WEBP) or describe a situation in a sentence.</p></article>
+      <article class="glass card"><div class="card-ico">✦</div><h3>2. The AI reads the vibe</h3><p>It looks only at visible elements: outfit, styling, composition, light, pose and setting.</p></article>
+      <article class="glass card"><div class="card-ico">⚡</div><h3>3. Get your Aura</h3><p>A score from 0 to 1000, six categories, your archetype and a shareable card.</p></article>
+    </div>
+  </section>
+
+  <section class="block">
+    <h2 class="sec-title">The Aura Score</h2>
+    <p class="sec-lead">Every Aura Score is built from six visible signals. No judgements about who you are — only how a moment reads.</p>
+    <div class="grid-2">
+      <div class="glass mini"><b>Presence</b><span>How much space you take in the frame.</span></div>
+      <div class="glass mini"><b>Style</b><span>Outfit, styling and colour coherence.</span></div>
+      <div class="glass mini"><b>Confidence Vibe</b><span>Pose, posture and visible expression.</span></div>
+      <div class="glass mini"><b>Photo Energy</b><span>Light, contrast and visual impact.</span></div>
+      <div class="glass mini"><b>Originality</b><span>How far it is from the obvious.</span></div>
+      <div class="glass mini"><b>Mystery</b><span>Restraint, negative space and mood.</span></div>
+    </div>
+  </section>
+
+  <section class="block">
+    <h2 class="sec-title">Aura Archetypes</h2>
+    <p class="sec-lead">Your result ends with one of ten archetypes.</p>
+    <div class="arch-grid" id="archGridHome"></div>
+  </section>
+
+  <section class="block">
+    <div class="glass pro-card">
+      <div class="pro-top"><span class="pro-badge">AURA PRO</span><span class="pro-best" id="homeBestValue">BEST VALUE</span></div>
+      <h2 class="pro-title">Go deeper than a number</h2>
+      <ul class="pro-list">
+        <li>Full aura analysis: what raises it, what lowers it</li>
+        <li>How to increase your aura — personalised plan</li>
+        <li>Outfit analysis &amp; photo optimizer</li>
+        <li>Aura Battle: two photos, one winner</li>
+        <li>Aura History with evolution chart</li>
+      </ul>
+      <div class="price-row">
+        <div class="price"><span class="amount" data-price="monthly">€6.99</span><span class="per">/month</span></div>
+        <div class="price"><span class="amount" data-price="yearly">€39.99</span><span class="per">/year</span></div>
+      </div>
+      <button class="btn btn-primary btn-block" id="btnHomePro">UNLOCK AURA PRO</button>
+      <p class="tiny muted">Cancel anytime. No dark patterns.</p>
+    </div>
+  </section>
+
+  <section class="block">
+    <h2 class="sec-title">FAQ</h2>
+    <div class="faq" id="faqList"></div>
+  </section>
+
+  <section class="block">
+    <h2 class="sec-title">Privacy</h2>
+    <p class="sec-lead">AuraDetector is built to collect as little as possible. Read the full <button class="link" data-nav="privacy">Privacy &amp; Data</button> page.</p>
+  </section>
+
+  <footer class="footer">
+    <div class="brand-row"><span class="brand-mark">✦</span><span>AuraDetector</span></div>
+    <nav class="foot-nav">
+      <button class="link" data-nav="privacy">Privacy &amp; Data</button>
+      <button class="link" data-nav="admin">Admin</button>
+      <button class="link" data-nav="history">History</button>
+    </nav>
+    <p class="tiny muted">AuraDetector is an entertainment product. Aura Scores are AI-generated and are not a scientific measurement of any person or property. We do not infer ethnicity, religion, health, politics, orientation, income or any other sensitive trait.</p>
+    <p class="tiny muted">© <span id="year"></span> AuraDetector. Made for fun.</p>
+  </footer>
+</section>
+
+<!-- ===================== PHOTO SCANNER ===================== -->
+<section class="screen" id="screen-photo">
+  <div class="screen-head">
+    <button class="back" data-nav="home">‹</button>
+    <h2>PHOTO SCANNER</h2>
+    <span class="spacer"></span>
+  </div>
+  <div class="glass panel">
+    <h3 class="panel-title">UPLOAD YOUR PHOTO</h3>
+    <p class="muted small">JPG · PNG · WEBP — max 10 MB. One clear subject reads best.</p>
+    <label class="dropzone" id="dropzone" for="fileInput">
+      <input type="file" id="fileInput" accept="image/jpeg,image/png,image/webp" hidden />
+      <div class="dz-inner">
+        <div class="dz-ico">＋</div>
+        <div class="dz-text">Tap to choose a photo</div>
+        <div class="dz-hint">or drag &amp; drop on desktop</div>
+      </div>
+      <img id="previewImg" class="preview" alt="Selected preview" hidden />
+    </label>
+    <div class="consent">
+      <span class="lock">🔒</span>
+      <p>Your photo is used only to generate your result. We do not sell your photos.</p>
+    </div>
+    <p class="field-error" id="photoError" hidden></p>
+    <button class="btn btn-primary btn-block" id="btnAnalyzePhoto" disabled>SCAN MY AURA</button>
+  </div>
+  <p class="tiny muted center">Entertainment only — not a scientific measurement.</p>
+</section>
+
+<!-- ===================== SCENARIO MODE ===================== -->
+<section class="screen" id="screen-scenario">
+  <div class="screen-head">
+    <button class="back" data-nav="home">‹</button>
+    <h2>DESCRIBE A SCENARIO</h2>
+    <span class="spacer"></span>
+  </div>
+  <div class="glass panel">
+    <h3 class="panel-title">WHAT'S THE SITUATION?</h3>
+    <p class="muted small">Describe the moment. Outfit, setting, how you move — the more specific, the better.</p>
+    <textarea id="scenarioInput" class="textarea" maxlength="600" placeholder="I walk into a party wearing a black leather jacket and say nothing."></textarea>
+    <div class="examples" id="scenarioExamples"></div>
+    <p class="field-error" id="scenarioError" hidden></p>
+    <button class="btn btn-primary btn-block" id="btnAnalyzeScenario">CALCULATE MY AURA</button>
+  </div>
+</section>
+
+<!-- ===================== BATTLE ===================== -->
+<section class="screen" id="screen-battle">
+  <div class="screen-head">
+    <button class="back" data-nav="result">‹</button>
+    <h2>AURA BATTLE</h2>
+    <span class="spacer"></span>
+  </div>
+  <div class="glass panel">
+    <p class="muted small">Upload two photos. The AI scores both and explains the differences — never with offensive or humiliating language.</p>
+    <div class="battle-grid">
+      <label class="battle-slot" for="battleA"><input type="file" id="battleA" accept="image/jpeg,image/png,image/webp" hidden /><span>PHOTO A</span><img id="battleImgA" hidden alt="Photo A" /></label>
+      <label class="battle-slot" for="battleB"><input type="file" id="battleB" accept="image/jpeg,image/png,image/webp" hidden /><span>PHOTO B</span><img id="battleImgB" hidden alt="Photo B" /></label>
+    </div>
+    <p class="field-error" id="battleError" hidden></p>
+    <button class="btn btn-primary btn-block" id="btnBattle" disabled>START BATTLE</button>
+  </div>
+  <div id="battleOut"></div>
+</section>
+
+<!-- ===================== LOADING ===================== -->
+<section class="screen" id="screen-loading">
+  <div class="loader-wrap">
+    <div class="scan-orb"><span></span><span></span><span></span></div>
+    <h2 class="loading-title">Reading your aura…</h2>
+    <ul class="phase-list" id="phaseList">
+      <li data-phase="0">Uploading photo…</li>
+      <li data-phase="1">Analyzing style…</li>
+      <li data-phase="2">Reading the vibe…</li>
+      <li data-phase="3">Calculating Aura Score…</li>
+    </ul>
+    <div class="progress-track"><div class="progress-fill" id="loadProgress"></div></div>
+  </div>
+</section>
+
+<!-- ===================== ERROR ===================== -->
+<section class="screen" id="screen-error">
+  <div class="screen-head">
+    <button class="back" data-nav="home">‹</button>
+    <h2>ANALYSIS</h2>
+    <span class="spacer"></span>
+  </div>
+  <div id="errorBody"></div>
+</section>
+
+<!-- ===================== RESULT ===================== -->
+<section class="screen" id="screen-result">
+  <div class="screen-head">
+    <button class="back" data-nav="home">‹</button>
+    <h2>YOUR RESULT</h2>
+    <span class="spacer"></span>
+  </div>
+  <div id="resultBody"></div>
+</section>
+
+<!-- ===================== HISTORY ===================== -->
+<section class="screen" id="screen-history">
+  <div class="screen-head">
+    <button class="back" data-nav="home">‹</button>
+    <h2>AURA HISTORY</h2>
+    <span class="spacer"></span>
+  </div>
+  <div id="historyBody"></div>
+</section>
+
+<!-- ===================== PRIVACY ===================== -->
+<section class="screen" id="screen-privacy">
+  <div class="screen-head">
+    <button class="back" data-nav="home">‹</button>
+    <h2>PRIVACY &amp; DATA</h2>
+    <span class="spacer"></span>
+  </div>
+  <div class="glass panel prose">
+    <h3>In plain language</h3>
+    <p><b>What we collect.</b> For a photo scan, the image you choose is processed to produce your result. For a scenario scan, the text you type. Locally we also store your results on this device so you can see your history.</p>
+    <p><b>Why.</b> Only to generate and show your Aura Score, and (if enabled) to keep your personal history.</p>
+    <p><b>How long.</b> Your uploaded image is used for analysis and is not kept by the app after your result is produced. History stores only the result data (score, categories, archetype, summary) — not the original photo.</p>
+    <p><b>Who we share with.</b> If a real AI provider is connected, the content you submit is sent to that provider solely to produce the result. We do not sell your data.</p>
+    <p><b>Delete my data.</b> Clears your local history and any stored result data on this device.</p>
+    <p><b>Delete my account.</b> Removes your local account profile and all associated local data.</p>
+    <p><b>Request deletion / GDPR.</b> EU users can request access, correction or deletion of their data by contacting <a href="mailto:privacy@auradetector.app">privacy@auradetector.app</a>. We aim to respond within 30 days.</p>
+    <div class="btn-col">
+      <button class="btn btn-danger btn-block" id="btnDeleteData">DELETE MY DATA</button>
+      <button class="btn btn-outline btn-block" id="btnDeleteAccount">DELETE MY ACCOUNT</button>
+    </div>
+    <p class="tiny muted">We implement security best practices and data minimisation. We do not claim to be “100% hacker-proof”.</p>
+  </div>
+</section>
+
+<!-- ===================== ACCOUNT ===================== -->
+<section class="screen" id="screen-account">
+  <div class="screen-head">
+    <button class="back" data-nav="home">‹</button>
+    <h2>ACCOUNT</h2>
+    <span class="spacer"></span>
+  </div>
+  <div id="accountBody"></div>
+</section>
+
+<!-- ===================== ADMIN ===================== -->
+<section class="screen" id="screen-admin">
+  <div class="screen-head">
+    <button class="back" data-nav="home">‹</button>
+    <h2>ADMIN DASHBOARD</h2>
+    <span class="spacer"></span>
+  </div>
+  <div id="adminLock" class="glass panel center">
+    <h3 class="panel-title">PROTECTED AREA</h3>
+    <p class="muted small">Admin access is verified on the server. Enter the admin passphrase.</p>
+    <input type="password" id="adminPass" class="input" placeholder="Passphrase" autocomplete="current-password" />
+    <p class="field-error" id="adminError" hidden></p>
+    <button class="btn btn-primary btn-block" id="btnAdminLogin">UNLOCK</button>
+    <p class="tiny muted">The credential is never present in the frontend, the JavaScript bundle, or localStorage.</p>
+  </div>
+  <div id="adminBody" hidden></div>
+</section>
+
+</main>
+
+<!-- ===================== BOTTOM NAV ===================== -->
+<nav class="bottomnav" id="bottomnav">
+  <button data-nav="home"><span>✦</span>Scan</button>
+  <button data-nav="history"><span>◷</span>History</button>
+  <button data-nav="account"><span>◉</span>Account</button>
+  <button data-nav="scenario"><span>✎</span>Scenario</button>
+</nav>
+
+<!-- ===================== PAYWALL MODAL ===================== -->
+<div class="modal" id="paywallModal" hidden>
+  <div class="modal-backdrop" data-close="payload"></div>
+  <div class="modal-card glass">
+    <button class="modal-x" id="paywallClose" aria-label="Close">✕</button>
+    <div class="paywall-hero" id="paywallHero">YOUR AURA IS 842…</div>
+    <h3 class="paywall-q" id="paywallQuestion">Want to know how to reach 900+?</h3>
+    <ul class="pro-list" id="paywallPerks"></ul>
+    <div class="plan-toggle" id="planToggle">
+      <button class="plan active" data-plan="yearly"><span class="plan-name">Annual</span><span class="plan-price" data-price="yearly">€39.99</span><span class="plan-best">BEST VALUE</span></button>
+      <button class="plan" data-plan="monthly"><span class="plan-name">Monthly</span><span class="plan-price" data-price="monthly">€6.99</span></button>
+    </div>
+    <button class="btn btn-primary btn-block" id="btnUnlockPro">UNLOCK AURA PRO</button>
+    <p class="tiny muted center">Cancel anytime.</p>
+  </div>
+</div>
+
+<!-- ===================== SETTINGS / AI MODAL ===================== -->
+<div class="modal" id="settingsModal" hidden>
+  <div class="modal-backdrop" data-close="settings"></div>
+  <div class="modal-card glass">
+    <button class="modal-x" id="settingsClose" aria-label="Close">✕</button>
+    <h3 class="panel-title">CONNECTION</h3>
+    <p class="muted small">AuraDetector analyses photos with Google Gemini Vision on the server, on the free tier. Nothing to configure here — the key stays server-side and is never sent to this device.</p>
+    <div class="glass" style="padding:12px 14px;margin:6px 0 4px;border-radius:12px"><span class="tiny muted" id="setStatus">Checking server…</span></div>
+    <label class="label">API base URL (optional — leave empty when served from the same domain)</label>
+    <input type="url" id="setApiBase" class="input" placeholder="https://auradetector.app" />
+    <label class="label" style="display:flex;gap:8px;align-items:center;margin-top:16px">
+      <input type="checkbox" id="setOffline" /> Offline preview (developer only)
+    </label>
+    <p class="tiny warn">Offline preview scores photos on this device without AI, for UI testing only. The Aura Score in normal use always comes from the server AI.</p>
+    <button class="btn btn-primary btn-block" id="btnSaveSettings">SAVE</button>
+  </div>
+</div>
+
+<!-- ===================== AD / EXTRA SCAN MODAL ===================== -->
+<div class="modal" id="adModal" hidden>
+  <div class="modal-backdrop" data-close="ad"></div>
+  <div class="modal-card glass center">
+    <button class="modal-x" id="adClose" aria-label="Close">✕</button>
+    <h3 class="panel-title">WATCH AN AD</h3>
+    <p class="muted small">Watch a short ad to get 1 extra scan today.</p>
+    <div class="ad-box" id="adBox"><span id="adCountdown">5</span></div>
+    <button class="btn btn-primary btn-block" id="btnClaimAd" disabled>CLAIM +1 SCAN</button>
+  </div>
+</div>
+
+<div class="toast" id="toast" hidden></div>
+
+<script src="engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

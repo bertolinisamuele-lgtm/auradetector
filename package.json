@@ -1,0 +1,21 @@
+{
+  "name": "auradetector",
+  "version": "1.1.0",
+  "private": true,
+  "type": "module",
+  "description": "AuraDetector — AI Aura Scanner (entertainment). Secure API + PWA.",
+  "engines": { "node": ">=24" },
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "NODE_ENV=development node --watch server/index.js",
+    "test": "node server/test.mjs"
+  },
+  "dependencies": {
+    "cookie-parser": "^1.4.7",
+    "express": "^4.21.2",
+    "express-rate-limit": "^7.5.0",
+    "helmet": "^8.0.0",
+    "multer": "^1.4.5-lts.1",
+    "stripe": "^17.0.0"
+  }
+}

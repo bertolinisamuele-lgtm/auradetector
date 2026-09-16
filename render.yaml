@@ -1,0 +1,66 @@
+# AuraDetector — Render Blueprint (free tier, no credit card)
+# https://render.com/docs/blueprint-spec
+#
+# How to deploy (see DEPLOY.md for the click-by-click walkthrough):
+#   1. Push this folder to a GitHub repository.
+#   2. Render → New + → Blueprint → pick the repo → Apply.
+#   3. Fill the secret env vars (marked sync:false) in the Render UI.
+#   4. Render builds the Dockerfile and gives you https://<name>.onrender.com
+#
+# APP_ORIGIN is auto-detected from RENDER_EXTERNAL_URL, so OAuth redirects,
+# Stripe return URLs and Secure cookies all match the HTTPS domain with no
+# extra configuration. Set APP_ORIGIN only if you later add a custom domain.
+
+services:
+  - type: web
+    name: auradetector
+    runtime: docker
+    plan: free
+    region: frankfurt
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: COOKIE_SECURE
+        value: "true"
+      - key: AI_PROVIDER
+        value: gemini
+      - key: DATA_DIR
+        value: /data
+      - key: GEMINI_FREE_DAILY_LIMIT
+        value: "200"
+      - key: GEMINI_FREE_PER_MINUTE
+        value: "8"
+      - key: FREE_SCANS_PER_DAY
+        value: "1"
+      # --- secrets: Render asks for these during the Blueprint deploy ---
+      - key: AURADETECTOR_GEMINI
+        sync: false
+      - key: ADMIN_PASSCODE
+        sync: false
+      - key: ADMIN_SESSION_SECRET
+        sync: false
+      - key: SESSION_SECRET
+        sync: false
+      # --- optional: enable sign-in with Google / Apple / Stripe ---
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: APPLE_CLIENT_ID
+        sync: false
+      - key: APPLE_TEAM_ID
+        sync: false
+      - key: APPLE_KEY_ID
+        sync: false
+      - key: APPLE_PRIVATE_KEY
+        sync: false
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: STRIPE_PRICE_MONTHLY
+        sync: false
+      - key: STRIPE_PRICE_YEARLY
+        sync: false
